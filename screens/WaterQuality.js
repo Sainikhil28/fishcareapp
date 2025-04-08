@@ -1,140 +1,211 @@
-import React, { useState } from "react";
-import { View, Text, Button, StyleSheet, Alert } from "react-native";
-import Speedometer from "react-native-speedometer";
-import { ref, set } from "firebase/database";
-import { dbRealtime } from "../firebaseConfig";
+import React, { useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Dimensions,
+  TouchableOpacity,
+  Animated,
+} from 'react-native';
+import { AnimatedCircularProgress } from 'react-native-circular-progress';
+import Icon from 'react-native-vector-icons/Ionicons';
 
-export default function WaterQuality() {
-  const [temperature] = useState(7); // °C
-  const [turbidity] = useState(65);   // NTU
-  const [phLevel] = useState(8.2);    // pH
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = width / 2 - 28;
 
-  const calculateWaterPurity = () => {
-    let score = 100;
+const WATER_QUALITY_PERCENT = 75;
 
-    if (turbidity > 50) score -= (turbidity - 50);
-    if (phLevel < 6.5 || phLevel > 8.5) score -= 10;
-    if (temperature < 20 || temperature > 30) score -= 5;
+const cards = [
+  { id: '1', title: 'Water', value: '2.1 liters', icon: 'water-outline', height: 250 },
+  { id: '2', title: 'Temp', value: '26.28°C', icon: 'thermometer-outline', height: 150 },
+  { id: '3', title: 'Turbidity', value: '510.43 NTU', icon: 'cloudy-outline', height: 150 }, // changed height
+  { id: '4', title: 'pH', value: '7.2', icon: 'flask-outline', height: 150 },
+];
 
-    return Math.max(0, Math.min(score, 100));
-  };
+const getColorByWaterQuality = (percent) => {
+  if (percent <= 35) return '#ff4d4d'; // Red
+  if (percent <= 70) return '#ffd700'; // Yellow
+  return '#2692D0'; // Blue
+};
 
-  const purityScore = calculateWaterPurity();
+const Card = ({ title, value, icon, height, delay }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(30)).current;
 
-  const triggerWaterChange = async () => {
-    try {
-      await set(ref(dbRealtime, "/waterChange/trigger"), true);
-      Alert.alert("Triggered", "Water change triggered.");
-    } catch (err) {
-      console.error(err);
-      Alert.alert("Error", "Failed to trigger water change.");
-    }
-  };
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 500,
+        delay,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.heading}>Water Quality Monitor</Text>
+    <Animated.View
+      style={[
+        styles.card,
+        {
+          height,
+          opacity: fadeAnim,
+          transform: [{ translateY }],
+          justifyContent: 'center',
+        },
+      ]}
+    >
+      <Icon name={icon} size={30} color="#2692D0" style={{ marginBottom: 10 }} />
+      <Text style={styles.cardTitle}>{title}</Text>
+      <Text style={styles.cardValue}>{value}</Text>
 
-      <View style={styles.speedoContainer}>
-        <Speedometer
-          value={purityScore}
-          totalValue={100}
-          size={220}
-          outerColor="#cfd8dc"
-          internalColor={
-            purityScore > 75 ? "#00b894" :
-            purityScore > 50 ? "#fdcb6e" :
-            "#d63031"
-          }
-          showText
-          text={`${purityScore}%`}
-          textStyle={{ color: "#fff", fontSize: 20 }}
-          showLabels
-          labelStyle={{ color: "#b2bec3" }}
-        />
-        
-        <Text style={styles.purityLabel}>     </Text>
-      </View>
-
-      <View style={styles.readingsContainer}>
-        <View style={styles.readingBox}>
-          <Text style={styles.readingLabel}>🌡️ Temp</Text>
-          <Text style={styles.readingValue}>{temperature} °C</Text>
+      {title === 'Water' && (
+        <View style={{ marginTop: 10 }}>
+          <Text style={styles.cardSubLabel}>Water Quality</Text>
+          <Text style={styles.cardSubValue}>{WATER_QUALITY_PERCENT}%</Text>
         </View>
-
-        <View style={styles.readingBox}>
-          <Text style={styles.readingLabel}>🌫️ Turbidity</Text>
-          <Text style={styles.readingValue}>{turbidity} NTU</Text>
-        </View>
-
-        <View style={styles.readingBox}>
-          <Text style={styles.readingLabel}>⚗️ pH</Text>
-          <Text style={styles.readingValue}>{phLevel}</Text>
-        </View>
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <Button
-          title="Change Water Now"
-          onPress={triggerWaterChange}
-          color="#ff4d4d"
-        />
-      </View>
-    </View>
+      )}
+    </Animated.View>
   );
-}
+};
+
+const WaterQualityScreen = () => {
+  const leftColumnCards = cards.filter((_, i) => i % 2 === 0);
+  const rightColumnCards = cards.filter((_, i) => i % 2 !== 0);
+
+  const speedometerColor = getColorByWaterQuality(WATER_QUALITY_PERCENT);
+
+  return (
+    <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <Text style={styles.heading}>Water Quality Analysis</Text>
+
+      <View style={styles.speedometerWrapper}>
+        <View style={styles.speedometerContainer}>
+          <AnimatedCircularProgress
+            size={200}
+            width={20}
+            fill={WATER_QUALITY_PERCENT}
+            tintColor={speedometerColor}
+            backgroundColor="#e0e0e0"
+            rotation={-360}
+            arcSweepAngle={360}
+            lineCap="round"
+          />
+          <TouchableOpacity style={styles.centerButton}>
+            <Text style={styles.centerButtonText}>Change Water</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <Text style={styles.subheading}>Stats</Text>
+
+      <View style={styles.columnsContainer}>
+        <View style={styles.column}>
+          {leftColumnCards.map((item, index) => (
+            <Card key={item.id} {...item} delay={index * 150} />
+          ))}
+        </View>
+        <View style={styles.column}>
+          {rightColumnCards.map((item, index) => (
+            <Card key={item.id} {...item} delay={index * 150 + 75} />
+          ))}
+        </View>
+      </View>
+    </ScrollView>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: "#08192d",
-    padding: 20,
-    justifyContent: "center",
+    paddingTop: 50,
+    paddingBottom: 100,
+    paddingHorizontal: 20,
+    backgroundColor: '#e6f2fb',
   },
   heading: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#ffffff",
-    marginBottom: 20,
-    textAlign: "center",
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 15,
   },
-  speedoContainer: {
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  purityLabel: {
-    marginTop: 15,
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#61dafb",
-  },
-  readingsContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginHorizontal: 10,
-    marginTop: 10,
+  speedometerWrapper: {
+    alignItems: 'center',
     marginBottom: 20,
   },
-  readingBox: {
-    alignItems: "center",
-    backgroundColor: "#0e2946",
-    padding: 15,
-    borderRadius: 10,
-    width: "30%",
+  speedometerContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  readingLabel: {
-    fontSize: 14,
-    color: "#b2bec3",
-    marginBottom: 5,
-    fontWeight: "600",
+  centerButton: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#2692D0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
   },
-  readingValue: {
+  centerButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  subheading: {
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 15,
+  },
+  columnsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  column: {
+    width: CARD_WIDTH,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 20,
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  cardTitle: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#ffffff",
+    fontWeight: '600',
+    color: '#333',
   },
-  buttonContainer: {
-    marginTop: 10,
-    paddingHorizontal: 20,
+  cardValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2692D0',
+    marginTop: 6,
+  },
+  cardSubLabel: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  cardSubValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2692D0',
+    textAlign: 'center',
   },
 });
+
+export default WaterQualityScreen;
