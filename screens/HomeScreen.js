@@ -104,18 +104,18 @@ const HomeScreen = () => {
         style={{ width: 80, height: 80, borderRadius: 10, marginRight: 10 }} 
         resizeMode="cover"
       />
-      <View>
-        <Text style={{ fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
-          🐠 Fish Count: {item.fishCount}
-        </Text>
-        <Text style={{ fontSize: 13, marginBottom: 2 }}>
-          💧 Water Changed: {item.lastWaterChange}
-        </Text>
-        <Text style={{ fontSize: 13 }}>
-          🍽️ Last Feed: {item.lastFeedTime}
-        </Text>
-      </View>
-    </View>
+      <View style={{ flexShrink: 1 }}>
+  <Text style={{ fontSize: 14, fontWeight: '600', marginBottom: 4 }}>
+    🐠 Fish Count: {item.fishCount}
+  </Text>
+  <Text style={{ fontSize: 13, marginBottom: 2, flexWrap: 'wrap' }}>
+    💧 Water Changed: {item.lastWaterChange}
+  </Text>
+  <Text style={{ fontSize: 13, flexWrap: 'wrap' }}>
+    🍽️ Last Feed: {item.lastFeedTime}
+  </Text>
+</View>
+</View>
   );
   
 
@@ -166,7 +166,7 @@ const HomeScreen = () => {
 
       <View style={styles.section}>
   <Text style={styles.myScheduleTitle}>Latest Updates</Text>
-  <View style={{ height: 200 }}> {/* You can adjust height */}
+  <View style={{ height: 140 }}> {/* You can adjust height */}
   <FlatList
   data={LatestUpdates}
   keyExtractor={item => item.id}
