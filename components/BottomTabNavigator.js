@@ -53,7 +53,7 @@ const BottomTabNavigator = () => {
         component={() => null}
         options={({ navigation }) => ({
           tabBarIcon: () => (
-            <Icon name="refresh-circle" size={50} color="white" />
+            <Icon name="refresh-circle" size={30} color="white" />
           ),
           tabBarButton: (props) => (
             <CustomTabBarButton {...props} navigation={navigation} />
