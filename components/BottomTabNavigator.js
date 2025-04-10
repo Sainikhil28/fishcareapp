@@ -1,23 +1,48 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
-import Addfish from '../screens/Addfish';
+import Addfish from '../screens/AddFish';
 import FeedFish from '../screens/FeedFish';
 import WaterQuality from '../screens/WaterQuality';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { TouchableOpacity, View, StyleSheet } from 'react-native';
+import { getDocs, collection } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
+import { Alert } from 'react-native';
+import { useFirebaseData } from '../FirebaseDataContext'; // adjust path
+
 
 const Tab = createBottomTabNavigator();
 
-const CustomTabBarButton = ({ children, navigation }) => (
-  <TouchableOpacity
-    style={styles.customButton}
-    onPress={() => navigation.navigate('Home')}
-    activeOpacity={0.8}
-  >
-    <View style={styles.customButtonInner}>{children}</View>
-  </TouchableOpacity>
-);
+const CustomTabBarButton = ({ children }) => {
+  const { setFishData } = useFirebaseData();
+
+  const handleRefresh = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'fishDetails'));
+      const updates = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setFishData(updates);
+      //Alert.alert('Refreshed!', 'Home screen data updated.');
+    } catch (error) {
+      console.error('Error refreshing:', error);
+      Alert.alert('Error', 'Could not refresh from Firebase.');
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      style={styles.customButton}
+      onPress={handleRefresh}
+      activeOpacity={0.8}
+    >
+      <View style={styles.customButtonInner}>{children}</View>
+    </TouchableOpacity>
+  );
+};
+
 
 const BottomTabNavigator = () => {
   return (

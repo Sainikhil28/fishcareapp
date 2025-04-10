@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,27 @@ import {
   TouchableOpacity,
   Animated,
   Image,
-  FlatList,
+  ScrollView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { ScrollView } from 'react-native';
+import { dbRealtime } from '../firebaseConfig';
+import { ref, set, push, query, orderByChild, limitToLast, get } from 'firebase/database';
+
 const { width } = Dimensions.get('window');
+
+const triggerFeed = async () => {
+  try {
+    await set(ref(dbRealtime, "/servoMotor/trigger"), true);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
 const FeedFish = () => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [feedLogs, setFeedLogs] = useState([]);
 
-  const handleFeedPress = () => {
+  /*const handleFeedPress = () => {
     Animated.sequence([
       Animated.timing(scaleAnim, {
         toValue: 0.95,
@@ -30,14 +41,101 @@ const FeedFish = () => {
         useNativeDriver: true,
       }),
     ]).start();
+
+    triggerFeed();
+  };*/
+
+  const handleFeedPress = async () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 3,
+        tension: 80,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  
+    try {
+      await triggerFeed();
+  
+      // Get current timestamp and formatted date/time
+      const now = new Date();
+      const day = now.toLocaleDateString('en-US', { weekday: 'long' });
+      const date = now.toLocaleDateString('en-US');
+      const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      const timestamp = now.getTime();
+  
+      const logEntry = { day, date, time, timestamp };
+  
+      // Add to feedLogs
+      await push(ref(dbRealtime, 'feedLogs'), logEntry);
+  
+      // Update lastFeed
+      await set(ref(dbRealtime, 'lastFeed'), logEntry);
+  
+      // Refresh the logs
+      fetchLatestFeedLogs();
+    } catch (error) {
+      console.error("Feed action failed:", error);
+    }
   };
 
-  const lastFiveFeeds = [
-    { id: '1', date: 'April 8', time: '9:55 am', day: 'Friday' },
-    { id: '2', date: 'April 7', time: '10:15 am', day: 'Thursday' },
-    { id: '3', date: 'April 6', time: '9:45 am', day: 'Wednesday' },
-   
-  ];
+
+  /*useEffect(() => {
+    const fetchLatestFeedLogs = async () => {
+      try {
+        const logsRef = query(ref(dbRealtime, 'feedLogs'), orderByChild('timestamp'), limitToLast(3));
+        const snapshot = await get(logsRef);
+        const logs = [];
+
+        snapshot.forEach(child => {
+          logs.push({
+            id: child.key,
+            ...child.val(),
+          });
+        });
+
+        // Reverse to show newest first
+        setFeedLogs(logs.reverse());
+      } catch (error) {
+        console.error("Error fetching feed logs:", error);
+      }
+    };
+
+    fetchLatestFeedLogs();
+  }, []);*/
+
+  const fetchLatestFeedLogs = async () => {
+    try {
+      const logsRef = query(ref(dbRealtime, 'feedLogs'), orderByChild('timestamp'), limitToLast(3));
+      const snapshot = await get(logsRef);
+      const logs = [];
+  
+      snapshot.forEach(child => {
+        logs.push({
+          id: child.key,
+          ...child.val(),
+        });
+      });
+  
+      setFeedLogs(logs.reverse());
+    } catch (error) {
+      console.error("Error fetching feed logs:", error);
+    }
+  };
+  
+  // Initial fetch
+  useEffect(() => {
+    fetchLatestFeedLogs();
+  }, []);
+  
+
+  const latestFeed = feedLogs.length > 0 ? feedLogs[0] : null;
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -45,22 +143,22 @@ const FeedFish = () => {
       <View style={styles.feedCard}>
         <View style={styles.feedHeader}>
           <Text style={styles.feedLabel}>Last feed</Text>
-          <Text style={styles.dayText}>Friday</Text>
+          <Text style={styles.dayText}>{latestFeed?.day || '--'}</Text>
         </View>
-        <Text style={styles.feedDate}>April 8</Text>
-        <Text style={styles.feedTime}> 9:55 am</Text>
+        <Text style={styles.feedDate}>{latestFeed?.date || '--'}</Text>
+        <Text style={styles.feedTime}>{latestFeed?.time || '--'}</Text>
         <View style={styles.progressBar} />
       </View>
-  
+
       {/* Banner */}
       <View style={styles.bannerCard}>
         <Image
-          source={require('../assets/banner2.jpeg')}
+          source={require('../assets/feedfish.jpg')}
           style={styles.bannerImage}
           resizeMode="cover"
         />
       </View>
-  
+
       {/* Feed Button */}
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
         <TouchableOpacity style={styles.feedButton} onPress={handleFeedPress}>
@@ -68,7 +166,7 @@ const FeedFish = () => {
           <Text style={styles.feedButtonText}>Feed Fish</Text>
         </TouchableOpacity>
       </Animated.View>
-  
+
       {/* Feed History Table */}
       <View style={styles.tableCard}>
         <Text style={styles.tableTitle}>Last 3 Feed Logs</Text>
@@ -77,7 +175,7 @@ const FeedFish = () => {
           <Text style={styles.tableHeaderText}>Date</Text>
           <Text style={styles.tableHeaderText}>Time</Text>
         </View>
-        {lastFiveFeeds.map((item) => (
+        {feedLogs.map((item) => (
           <View key={item.id} style={styles.tableRow}>
             <Text style={styles.tableCell}>{item.day}</Text>
             <Text style={styles.tableCell}>{item.date}</Text>

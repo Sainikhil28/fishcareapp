@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "Aqua",
+    "name": "FishCareApp",
     "slug": "FishCareApp",
+    "newArchEnabled": true,
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "../assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -19,16 +19,10 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      },
-      "package": "com.bubalan.FishCareApp"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "9901c4a3-646c-45ea-9b9b-7674bc4db2b0"
-      }
     }
   }
 }
