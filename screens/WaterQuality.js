@@ -11,15 +11,17 @@ import {
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import Icon from 'react-native-vector-icons/Ionicons';
 
+import { ref, set, push, query, orderByChild, limitToLast, get } from 'firebase/database';
+import { dbRealtime } from '../firebaseConfig'; // ✅ Import from your config
+
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width / 2 - 28;
-
 const WATER_QUALITY_PERCENT = 75;
 
 const cards = [
   { id: '1', title: 'Water', value: '2.1 liters', icon: 'water-outline', height: 250 },
   { id: '2', title: 'Temp', value: '26.28°C', icon: 'thermometer-outline', height: 150 },
-  { id: '3', title: 'Turbidity', value: '510.43 NTU', icon: 'cloudy-outline', height: 150 }, // changed height
+  { id: '3', title: 'Turbidity', value: '510.43 NTU', icon: 'cloudy-outline', height: 150 },
   { id: '4', title: 'pH', value: '7.2', icon: 'flask-outline', height: 150 },
 ];
 
@@ -82,6 +84,20 @@ const WaterQualityScreen = () => {
 
   const speedometerColor = getColorByWaterQuality(WATER_QUALITY_PERCENT);
 
+  const handleChangeWater = () => {
+    const waterChangeRef = ref(dbRealtime, 'waterChange'); // ✅ Using your dbRealtime
+    set(waterChangeRef, {
+      change: true,
+      timestamp: Date.now(),
+    })
+      .then(() => {
+        console.log('Water change triggered');
+      })
+      .catch((error) => {
+        console.error('Error updating waterchange:', error);
+      });
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <Text style={styles.heading}>Water Quality Analysis</Text>
@@ -98,7 +114,7 @@ const WaterQualityScreen = () => {
             arcSweepAngle={360}
             lineCap="round"
           />
-          <TouchableOpacity style={styles.centerButton}>
+          <TouchableOpacity style={styles.centerButton} onPress={handleChangeWater}>
             <Text style={styles.centerButtonText}>Change Water</Text>
           </TouchableOpacity>
         </View>
