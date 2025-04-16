@@ -8,6 +8,9 @@ import {
   FlatList,
   Dimensions,
   TouchableOpacity,
+  Modal,
+  TextInput,
+  Button,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useFirebaseData } from '../FirebaseDataContext'; // adjust path
@@ -52,6 +55,12 @@ const colors = ['#29b6f6', '#3cc694', '#f9a825', '#ff7043'];
 const HomeScreen = () => {
   const [greeting, setGreeting] = useState('');
   const [latestUpdates, setLatestUpdates] = useState([]);
+  const [userName, setUserName] = useState('User');
+  const [waterCapacity, setWaterCapacity] = useState('0');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [tempName, setTempName] = useState(userName);
+  const [tempCapacity, setTempCapacity] = useState(waterCapacity);
+
   const { fishData } = useFirebaseData();
 
   useEffect(() => {
@@ -70,6 +79,12 @@ const HomeScreen = () => {
       setLatestUpdates(updates);
     }
   }, [fishData]);
+
+  const handleSave = () => {
+    setUserName(tempName);
+    setWaterCapacity(tempCapacity);
+    setModalVisible(false);
+  };
 
   const renderCard = ({ item }) => (
     <View style={styles.updateCard}>
@@ -101,13 +116,41 @@ const HomeScreen = () => {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>{greeting},</Text>
-          <Text style={styles.userName}>Babloo</Text>
+          <TouchableOpacity onPress={() => setModalVisible(true)}>
+            <Text style={styles.userName}>{userName}</Text>
+            <Text style={styles.Wtercap}>Water Tank Capacity: {waterCapacity} Ltr</Text>
+          </TouchableOpacity>
         </View>
         <TouchableOpacity>
           <Icon name="notifications-outline" size={26} color="#000" />
           <View style={styles.notificationDot} />
         </TouchableOpacity>
       </View>
+
+      {/* Modal for updating name and water capacity */}
+      <Modal visible={modalVisible} animationType="slide" transparent>
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Update Info</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter Name"
+              value={tempName}
+              onChangeText={setTempName}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Enter Water Tank Capacity"
+              value={tempCapacity}
+              onChangeText={setTempCapacity}
+            />
+            <View style={styles.modalButtons}>
+              <Button title="Cancel" onPress={() => setModalVisible(false)} />
+              <Button title="Save" onPress={handleSave} />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Banner Carousel */}
       <ScrollView
@@ -178,6 +221,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#000',
   },
+  Wtercap: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#555',
+  },
   notificationDot: {
     position: 'absolute',
     top: -2,
@@ -239,6 +287,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#f0f0f0',
     marginTop: 5,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: '#000000aa',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    padding: 20,
+    width: '80%',
+    borderRadius: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
   },
 });
 

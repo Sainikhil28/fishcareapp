@@ -10,13 +10,12 @@ import {
 } from 'react-native';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import Icon from 'react-native-vector-icons/Ionicons';
-
-import { ref, set, push, query, orderByChild, limitToLast, get } from 'firebase/database';
-import { dbRealtime } from '../firebaseConfig'; // ✅ Import from your config
+import { ref, set } from 'firebase/database';
+import { dbRealtime } from '../firebaseConfig';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width / 2 - 28;
-const WATER_QUALITY_PERCENT = 35;
+const WATER_QUALITY_PERCENT = 75;
 
 const cards = [
   { id: '1', title: 'Water', value: '2.1 liters', icon: 'water-outline', height: 250 },
@@ -26,9 +25,9 @@ const cards = [
 ];
 
 const getColorByWaterQuality = (percent) => {
-  if (percent <= 35) return '#ff4d4d'; // Red
-  if (percent <= 70) return '#ffd700'; // Yellow
-  return '#2692D0'; // Blue
+  if (percent <= 35) return '#ff4d4d';
+  if (percent <= 70) return '#ffd700';
+  return '#2692D0';
 };
 
 const Card = ({ title, value, icon, height, delay }) => {
@@ -81,11 +80,10 @@ const Card = ({ title, value, icon, height, delay }) => {
 const WaterQualityScreen = () => {
   const leftColumnCards = cards.filter((_, i) => i % 2 === 0);
   const rightColumnCards = cards.filter((_, i) => i % 2 !== 0);
-
   const speedometerColor = getColorByWaterQuality(WATER_QUALITY_PERCENT);
 
   const handleChangeWater = () => {
-    const waterChangeRef = ref(dbRealtime, 'waterChange'); // ✅ Using your dbRealtime
+    const waterChangeRef = ref(dbRealtime, 'waterChange');
     set(waterChangeRef, {
       change: true,
       timestamp: Date.now(),
@@ -98,6 +96,14 @@ const WaterQualityScreen = () => {
       });
   };
 
+  const size = 200;
+  const strokeWidth = 20;
+  const radius = size / 2;
+  const angle = (WATER_QUALITY_PERCENT / 100) * 360 - 90; // start from top
+  const radians = (angle * Math.PI) / 180;
+  const edgeX = radius + radius * Math.cos(radians);
+  const edgeY = radius + radius * Math.sin(radians);
+
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <Text style={styles.heading}>Water Quality Analysis</Text>
@@ -105,8 +111,8 @@ const WaterQualityScreen = () => {
       <View style={styles.speedometerWrapper}>
         <View style={styles.speedometerContainer}>
           <AnimatedCircularProgress
-            size={200}
-            width={20}
+            size={size}
+            width={strokeWidth}
             fill={WATER_QUALITY_PERCENT}
             tintColor={speedometerColor}
             backgroundColor="#e0e0e0"
@@ -114,11 +120,33 @@ const WaterQualityScreen = () => {
             arcSweepAngle={360}
             lineCap="round"
           />
-          <TouchableOpacity style={styles.centerButton} onPress={handleChangeWater}>
+          {/* Floating percentage at arc end */}
+          <View
+            style={[
+              styles.percentageBubble,
+              {
+                left: edgeX - 20,
+                top: edgeY - 10,
+                backgroundColor: speedometerColor,
+              },
+            ]}
+          >
+            <Text style={styles.bubbleText}>{WATER_QUALITY_PERCENT}%</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.centerButton, { backgroundColor: speedometerColor }]}
+            onPress={handleChangeWater}
+          >
             <Text style={styles.centerButtonText}>Change Water</Text>
           </TouchableOpacity>
         </View>
       </View>
+      <View style={styles.feedButtonWrapper}>
+  <TouchableOpacity style={styles.feedButton}>
+    <Text style={styles.feedButtonText}>Fetch Stats</Text>
+  </TouchableOpacity>
+</View>
 
       <Text style={styles.subheading}>Stats</Text>
 
@@ -158,13 +186,13 @@ const styles = StyleSheet.create({
   speedometerContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   centerButton: {
     position: 'absolute',
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#2692D0',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,
@@ -199,6 +227,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 4 },
   },
+  feedButtonWrapper: {
+  alignItems: 'center',
+
+},
+
   cardTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -221,6 +254,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2692D0',
     textAlign: 'center',
+  },
+  percentageBubble: {
+    position: 'absolute',
+    width: 50,
+    height: 25,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    paddingHorizontal: 6,
+  },
+  bubbleText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  feedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2692D0',
+    paddingVertical: 16,
+    paddingHorizontal: 40,
+    borderRadius: 28,
+    alignSelf: 'center',
+    elevation: 4,
+    marginBottom: 10,
+  },
+  feedButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
 
