@@ -16,7 +16,7 @@ import { dbRealtime } from '../firebaseConfig'; // ✅ Import from your config
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width / 2 - 28;
-const WATER_QUALITY_PERCENT = 75;
+const WATER_QUALITY_PERCENT = 35;
 
 const cards = [
   { id: '1', title: 'Water', value: '2.1 liters', icon: 'water-outline', height: 250 },
