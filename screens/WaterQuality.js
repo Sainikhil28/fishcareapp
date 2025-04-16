@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   Animated,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
+
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { ref, set } from 'firebase/database';
@@ -34,6 +36,7 @@ const getColorByWaterQuality = (percent) => {
 const Card = ({ title, value, icon, height, delay }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(30)).current;
+ 
 
   useEffect(() => {
     Animated.parallel([
@@ -78,48 +81,58 @@ const Card = ({ title, value, icon, height, delay }) => {
   );
 };
 
-const StatusModal = ({ visible, message, onClose }) => {
-  return (
-    <Modal transparent visible={visible} animationType="fade">
-      <View style={styles.modalBackground}>
-        <View style={styles.modalContainer}>
-          <Text style={styles.modalMessage}>{message}</Text>
-          <TouchableOpacity style={styles.modalButton} onPress={onClose}>
-            <Text style={styles.modalButtonText}>Close</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-};
-
 const WaterQualityScreen = () => {
-  const [modalVisible, setModalVisible] = useState(false);
+  const [loadingModalVisible, setLoadingModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
 
   const leftColumnCards = cards.filter((_, i) => i % 2 === 0);
   const rightColumnCards = cards.filter((_, i) => i % 2 !== 0);
   const speedometerColor = getColorByWaterQuality(WATER_QUALITY_PERCENT);
+  const [modalStep, setModalStep] = useState('loading'); // 'loading' | 'success'
 
   const handleChangeWater = () => {
+    setModalMessage('Changing water...');
+    setLoadingModalVisible(true);
+    setModalStep('loading');
+  
     const waterChangeRef = ref(dbRealtime, 'waterChange');
     set(waterChangeRef, {
       change: true,
       timestamp: Date.now(),
     })
-      .then(() => {
-        setModalMessage('Water change initiated');
-        setModalVisible(true);
-      })
-      .catch((error) => {
-        console.error('Error updating waterchange:', error);
+      .then(() => console.log('Water change triggered'))
+      .catch((error) => console.error('Error updating waterchange:', error))
+      .finally(() => {
+        setTimeout(() => {
+          setModalStep('success');
+          setModalMessage('Success!');
+        }, 1500);
+  
+        setTimeout(() => {
+          setLoadingModalVisible(false);
+          setModalStep('loading');
+        }, 3000);
       });
   };
+  
 
   const handleFetchStats = () => {
     setModalMessage('Fetching latest stats...');
-    setModalVisible(true);
+    setLoadingModalVisible(true);
+    setModalStep('loading');
+  
+    setTimeout(() => {
+      console.log('Stats fetched!');
+      setModalStep('success');
+      setModalMessage('Success!');
+    }, 1500);
+  
+    setTimeout(() => {
+      setLoadingModalVisible(false);
+      setModalStep('loading');
+    }, 3000);
   };
+  
 
   const size = 200;
   const strokeWidth = 20;
@@ -188,11 +201,24 @@ const WaterQualityScreen = () => {
         </View>
       </View>
 
-      <StatusModal
-        visible={modalVisible}
-        message={modalMessage}
-        onClose={() => setModalVisible(false)}
-      />
+      <Modal visible={loadingModalVisible} transparent animationType="fade">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+          {modalStep === 'loading' ? (
+  <>
+    <ActivityIndicator size="large" color="#2692D0" />
+    <Text style={styles.modalText}>{modalMessage}</Text>
+  </>
+) : (
+  <>
+    <Icon name="checkmark-circle" size={60} color="#4BB543" />
+    <Text style={styles.modalText}>{modalMessage}</Text>
+  </>
+)}
+
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 };
@@ -281,6 +307,21 @@ const styles = StyleSheet.create({
     color: '#2692D0',
     textAlign: 'center',
   },
+  percentageBubble: {
+    position: 'absolute',
+    width: 50,
+    height: 25,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    paddingHorizontal: 6,
+  },
+  bubbleText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
   feedButtonWrapper: {
     alignItems: 'center',
   },
@@ -300,50 +341,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  percentageBubble: {
-    position: 'absolute',
-    width: 50,
-    height: 25,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-    paddingHorizontal: 6,
-  },
-  bubbleText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
-  modalBackground: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   modalContainer: {
-    backgroundColor: '#fff',
-    padding: 24,
-    borderRadius: 18,
-    width: '80%',
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  modalMessage: {
+  modalContent: {
+    backgroundColor: '#fff',
+    paddingVertical: 30,
+    paddingHorizontal: 40,
+    borderRadius: 16,
+    alignItems: 'center',
+    elevation: 10,
+  },
+  modalText: {
+    marginTop: 15,
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  modalButton: {
-    backgroundColor: '#2692D0',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 24,
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
+    color: '#333',
   },
 });
 

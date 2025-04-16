@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { db } from '../firebaseConfig';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { Modal, Alert } from 'react-native';
 
 const AddFish = () => {
   const [breed, setBreed] = useState('');
   const [count, setCount] = useState('');
   const [fishList, setFishList] = useState([]);
   const [editId, setEditId] = useState(null);
-
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalAction, setModalAction] = useState(null); // 'add' or 'delete'
+  const [modalItem, setModalItem] = useState(null); // Store the item for delete
+  
   const fetchFishList = async () => {
     const snapshot = await getDocs(collection(db, 'fishDetails'));
     const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -20,23 +24,32 @@ const AddFish = () => {
   }, []);
 
   const handleAdd = async () => {
-    if (breed.trim() && count.trim()) {
+    setModalAction('add');
+    setModalVisible(true);
+  };
+  
+
+  const handleDelete = (id) => {
+    setModalAction('delete');
+    setModalItem(id);
+    setModalVisible(true);
+  };
+  const handleConfirmAction = async () => {
+    if (modalAction === 'delete') {
+      await deleteDoc(doc(db, 'fishDetails', modalItem));
+      fetchFishList();
+    } else if (modalAction === 'add') {
       await addDoc(collection(db, 'fishDetails'), {
         breed,
         number: parseInt(count),
         lastFed: null,
         lastWaterCheck: null,
       });
-      setBreed('');
-      setCount('');
       fetchFishList();
     }
+    setModalVisible(false); // Close the modal
   };
-
-  const handleDelete = async (id) => {
-    await deleteDoc(doc(db, 'fishDetails', id));
-    fetchFishList();
-  };
+    
 
   const handleEdit = (item) => {
     setBreed(item.breed);
@@ -156,6 +169,29 @@ const AddFish = () => {
             })
           )}
         </View>
+        <Modal
+  animationType="slide"
+  transparent={true}
+  visible={modalVisible}
+  onRequestClose={() => setModalVisible(false)}
+>
+  <View style={styles.modalBackground}>
+    <View style={styles.modalContainer}>
+      <Text style={styles.modalTitle}>
+        {modalAction === 'delete' ? 'Are you sure you want to delete?' : 'Are you sure you want to add the fish?'}
+      </Text>
+      <View style={styles.modalButtonsContainer}>
+        <TouchableOpacity style={styles.modalButton} onPress={() => setModalVisible(false)}>
+          <Text style={styles.modalButtonText}>Cancel</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.modalButton} onPress={handleConfirmAction}>
+          <Text style={styles.modalButtonText}>OK</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+</Modal>
+
       </ScrollView>
     </View>
   );
@@ -296,6 +332,41 @@ const styles = StyleSheet.create({
     color: '#999',
     fontStyle: 'italic',
   },
+  modalBackground: {
+  flex: 1,
+  justifyContent: 'center',
+  alignItems: 'center',
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+},
+modalContainer: {
+  backgroundColor: '#fff',
+  padding: 20,
+  borderRadius: 10,
+  alignItems: 'center',
+},
+modalTitle: {
+  fontSize: 18,
+  marginBottom: 20,
+  fontWeight: 'bold',
+},
+modalButtonsContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  width: '100%',
+},
+modalButton: {
+  backgroundColor: '#2692D0',
+  paddingVertical: 10,
+  paddingHorizontal: 20,
+  borderRadius: 12,
+  margin: 5,
+},
+modalButtonText: {
+  color: '#fff',
+  fontSize: 16,
+  fontWeight: '600',
+},
+
 });
 
 export default AddFish;

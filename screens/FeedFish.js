@@ -27,9 +27,23 @@ const triggerFeed = async () => {
 const FeedFish = () => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [feedLogs, setFeedLogs] = useState([]);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+  const [lastFeedTimestamp, setLastFeedTimestamp] = useState(null);
 
   const handleFeedPress = async () => {
+    if (lastFeedTimestamp) {
+      const now = new Date().getTime();
+      const diffHours = (now - lastFeedTimestamp) / (1000 * 60 * 60);
+      if (diffHours < 12) {
+        setConfirmModalVisible(true);
+        return;
+      }
+    }
+    proceedToFeed();
+  };
+
+  const proceedToFeed = async () => {
     Animated.sequence([
       Animated.timing(scaleAnim, {
         toValue: 0.95,
@@ -60,8 +74,8 @@ const FeedFish = () => {
 
       fetchLatestFeedLogs();
 
-      setModalVisible(true);
-      setTimeout(() => setModalVisible(false), 2000);
+      setSuccessModalVisible(true);
+      setTimeout(() => setSuccessModalVisible(false), 2000);
     } catch (error) {
       console.error("Feed action failed:", error);
     }
@@ -80,7 +94,12 @@ const FeedFish = () => {
         });
       });
 
-      setFeedLogs(logs.reverse());
+      const sortedLogs = logs.reverse();
+      setFeedLogs(sortedLogs);
+
+      if (sortedLogs.length > 0) {
+        setLastFeedTimestamp(sortedLogs[0].timestamp);
+      }
     } catch (error) {
       console.error("Error fetching feed logs:", error);
     }
@@ -94,11 +113,40 @@ const FeedFish = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      <Modal visible={modalVisible} transparent animationType="fade">
+      {/* Success Modal */}
+      <Modal visible={successModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Icon name="checkmark-circle" size={60} color="#4BB543" />
             <Text style={styles.modalText}>Fish Fed Success</Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Confirm Modal */}
+      <Modal visible={confirmModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Icon name="alert-circle" size={60} color="#FFA500" />
+            <Text style={styles.modalText}>It's not been 12 hours since last feed.</Text>
+            <Text style={{ marginTop: 10, color: '#333' }}>Are you sure you want to feed again?</Text>
+            <View style={{ flexDirection: 'row', marginTop: 20 }}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#ccc' }]}
+                onPress={() => setConfirmModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: '#2692D0', marginLeft: 10 }]}
+                onPress={() => {
+                  setConfirmModalVisible(false);
+                  proceedToFeed();
+                }}
+              >
+                <Text style={styles.modalButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -281,7 +329,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginTop: 10,
-    color: '#4BB543',
+    color: '#333',
+    textAlign: 'center',
+  },
+  modalButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontWeight: '600',
   },
 });
 
