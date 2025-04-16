@@ -100,12 +100,12 @@ const HomeScreen = () => {
         <Text style={{ fontSize: 13, marginBottom: 2 }}>
           🧮 Count: {item.number ?? item.fishCount ?? 'N/A'}
         </Text>
-        <Text style={{ fontSize: 13, marginBottom: 2 }}>
+        {/* <Text style={{ fontSize: 13, marginBottom: 2 }}>
           💧 Last Water Check: {item.lastWaterCheck || item.lastWaterChange || 'N/A'}
         </Text>
         <Text style={{ fontSize: 13 }}>
           🍽️ Last Fed: {item.lastFed || item.lastFeedTime || 'N/A'}
-        </Text>
+        </Text> */}
       </View>
     </View>
   );
@@ -121,10 +121,10 @@ const HomeScreen = () => {
             <Text style={styles.Wtercap}>Water Tank Capacity: {waterCapacity} Ltr</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity>
+        {/* <TouchableOpacity>
           <Icon name="notifications-outline" size={26} color="#000" />
           <View style={styles.notificationDot} />
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {/* Modal for updating name and water capacity */}
