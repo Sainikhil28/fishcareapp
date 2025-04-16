@@ -9,23 +9,17 @@ import {
   Animated,
   Modal,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { ref, set } from 'firebase/database';
+import { ref, set, onValue, get } from 'firebase/database';
+
 import { dbRealtime } from '../firebaseConfig';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width / 2 - 28;
-const WATER_QUALITY_PERCENT = 75;
-
-const cards = [
-  { id: '1', title: 'Water', value: '2.1 liters', icon: 'water-outline', height: 250 },
-  { id: '2', title: 'Temp', value: '26.28°C', icon: 'thermometer-outline', height: 150 },
-  { id: '3', title: 'Turbidity', value: '510.43 NTU', icon: 'cloudy-outline', height: 150 },
-  { id: '4', title: 'pH', value: '7.2', icon: 'flask-outline', height: 150 },
-];
 
 const getColorByWaterQuality = (percent) => {
   if (percent <= 35) return '#ff4d4d';
@@ -33,10 +27,9 @@ const getColorByWaterQuality = (percent) => {
   return '#2692D0';
 };
 
-const Card = ({ title, value, icon, height, delay }) => {
+const Card = ({ title, value, icon, height, delay, score, onPress }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(30)).current;
- 
 
   useEffect(() => {
     Animated.parallel([
@@ -67,14 +60,16 @@ const Card = ({ title, value, icon, height, delay }) => {
         },
       ]}
     >
-      <Icon name={icon} size={30} color="#2692D0" style={{ marginBottom: 10 }} />
-      <Text style={styles.cardTitle}>{title}</Text>
-      <Text style={styles.cardValue}>{value}</Text>
+      <TouchableOpacity onPress={onPress}>
+        <Icon name={icon} size={30} color="#2692D0" style={{ marginBottom: 10 }} />
+        <Text style={styles.cardTitle}>{title}</Text>
+        <Text style={styles.cardValue}>{value}</Text>
+      </TouchableOpacity>
 
-      {title === 'Water' && (
+      {title === 'Water Level' && (
         <View style={{ marginTop: 10 }}>
           <Text style={styles.cardSubLabel}>Water Quality</Text>
-          <Text style={styles.cardSubValue}>{WATER_QUALITY_PERCENT}%</Text>
+          <Text style={styles.cardSubValue}>{score}%</Text>
         </View>
       )}
     </Animated.View>
@@ -84,63 +79,120 @@ const Card = ({ title, value, icon, height, delay }) => {
 const WaterQualityScreen = () => {
   const [loadingModalVisible, setLoadingModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
-
-  const leftColumnCards = cards.filter((_, i) => i % 2 === 0);
-  const rightColumnCards = cards.filter((_, i) => i % 2 !== 0);
-  const speedometerColor = getColorByWaterQuality(WATER_QUALITY_PERCENT);
-  const [modalStep, setModalStep] = useState('loading'); // 'loading' | 'success'
+  const [modalStep, setModalStep] = useState('loading');
+  const [sensorData, setSensorData] = useState({
+    temperature: 0,
+    ph: '0',
+    turbidity: 0,
+    waterLevel: 0,
+  });
+  const [waterQualityScore, setWaterQualityScore] = useState(0);
+  const [waterLevelModalVisible, setWaterLevelModalVisible] = useState(false);
+  const [newWaterLevel, setNewWaterLevel] = useState('');
 
   const handleChangeWater = () => {
     setModalMessage('Changing water...');
     setLoadingModalVisible(true);
     setModalStep('loading');
-  
+
     const waterChangeRef = ref(dbRealtime, 'waterChange');
     set(waterChangeRef, {
       change: true,
       timestamp: Date.now(),
     })
       .then(() => console.log('Water change triggered'))
-      .catch((error) => console.error('Error updating waterchange:', error))
+      .catch((error) => console.error('Error updating water change:', error))
       .finally(() => {
         setTimeout(() => {
           setModalStep('success');
           setModalMessage('Success!');
         }, 1500);
-  
+
         setTimeout(() => {
           setLoadingModalVisible(false);
           setModalStep('loading');
         }, 3000);
       });
   };
-  
 
-  const handleFetchStats = () => {
+  const handleFetchStats = async () => {
     setModalMessage('Fetching latest stats...');
     setLoadingModalVisible(true);
     setModalStep('loading');
-  
-    setTimeout(() => {
-      console.log('Stats fetched!');
+
+    try {
+      const sensorRef = ref(dbRealtime, 'sensorReadings');
+      const snapshot = await get(sensorRef);
+
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setSensorData(data);
+
+        const ph = parseFloat(data.ph);
+        const turbidity = parseFloat(data.turbidity);
+        const temperature = parseFloat(data.temperature);
+
+        const phScore = 10 - Math.abs(7 - ph);
+        const turbidityScore = 10 - turbidity;
+        const tempScore = 10 - Math.abs(25 - temperature);
+
+        const score = Math.max(0, ((phScore + turbidityScore + tempScore) / 3) * 10).toFixed(0);
+        setWaterQualityScore(score);
+
+        console.log('Stats fetched!');
+        setModalStep('success');
+        setModalMessage('Success!');
+      } else {
+        console.log('No data available');
+        setModalStep('success');
+        setModalMessage('No data found');
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
       setModalStep('success');
-      setModalMessage('Success!');
-    }, 1500);
-  
+      setModalMessage('Error fetching stats');
+    }
+
     setTimeout(() => {
       setLoadingModalVisible(false);
       setModalStep('loading');
     }, 3000);
   };
-  
+
+  const handleWaterLevelUpdate = () => {
+    if (newWaterLevel.trim() === '') {
+      alert('Please enter a valid water level');
+      return;
+    }
+
+    const waterLevelRef = ref(dbRealtime, 'sensorReadings/waterLevel');
+    set(waterLevelRef, parseInt(newWaterLevel))
+      .then(() => {
+        setSensorData({ ...sensorData, waterLevel: newWaterLevel });
+        setWaterLevelModalVisible(false);
+        console.log('Water level updated');
+      })
+      .catch((error) => console.error('Error updating water level:', error));
+  };
 
   const size = 200;
   const strokeWidth = 20;
   const radius = size / 2;
-  const angle = (WATER_QUALITY_PERCENT / 100) * 360 - 90;
+  const angle = (waterQualityScore / 100) * 360 - 90;
   const radians = (angle * Math.PI) / 180;
   const edgeX = radius + radius * Math.cos(radians);
   const edgeY = radius + radius * Math.sin(radians);
+
+  const speedometerColor = getColorByWaterQuality(waterQualityScore);
+
+  const leftColumnCards = [
+    { id: '1', title: 'Water Level', value: `${sensorData.waterLevel}°Ltr`, icon: 'water-outline', height: 250, onPress: () => setWaterLevelModalVisible(true) },
+    { id: '2', title: 'Temp', value: `${sensorData.temperature}°C`, icon: 'thermometer-outline', height: 150 },
+  ];
+  const rightColumnCards = [
+    { id: '3', title: 'Turbidity', value: `${sensorData.turbidity} NTU`, icon: 'cloudy-outline', height: 150 },
+    { id: '4', title: 'pH', value: `${sensorData.ph}`, icon: 'flask-outline', height: 150 },
+  ];
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
@@ -151,7 +203,7 @@ const WaterQualityScreen = () => {
           <AnimatedCircularProgress
             size={size}
             width={strokeWidth}
-            fill={WATER_QUALITY_PERCENT}
+            fill={waterQualityScore}
             tintColor={speedometerColor}
             backgroundColor="#e0e0e0"
             rotation={-360}
@@ -168,7 +220,7 @@ const WaterQualityScreen = () => {
               },
             ]}
           >
-            <Text style={styles.bubbleText}>{WATER_QUALITY_PERCENT}%</Text>
+            <Text style={styles.bubbleText}>{waterQualityScore}%</Text>
           </View>
 
           <TouchableOpacity
@@ -191,7 +243,7 @@ const WaterQualityScreen = () => {
       <View style={styles.columnsContainer}>
         <View style={styles.column}>
           {leftColumnCards.map((item, index) => (
-            <Card key={item.id} {...item} delay={index * 150} />
+            <Card key={item.id} {...item} delay={index * 150} score={waterQualityScore} />
           ))}
         </View>
         <View style={styles.column}>
@@ -204,24 +256,51 @@ const WaterQualityScreen = () => {
       <Modal visible={loadingModalVisible} transparent animationType="fade">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-          {modalStep === 'loading' ? (
-  <>
-    <ActivityIndicator size="large" color="#2692D0" />
-    <Text style={styles.modalText}>{modalMessage}</Text>
-  </>
-) : (
-  <>
-    <Icon name="checkmark-circle" size={60} color="#4BB543" />
-    <Text style={styles.modalText}>{modalMessage}</Text>
-  </>
-)}
+            {modalStep === 'loading' ? (
+              <>
+                <ActivityIndicator size="large" color="#2692D0" />
+                <Text style={styles.modalText}>{modalMessage}</Text>
+              </>
+            ) : (
+              <>
+                <Icon name="checkmark-circle" size={60} color="#4BB543" />
+                <Text style={styles.modalText}>{modalMessage}</Text>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
 
+      <Modal visible={waterLevelModalVisible} transparent animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>Update Water Level</Text>
+            <TextInput
+              style={styles.input}
+              value={newWaterLevel}
+              onChangeText={setNewWaterLevel}
+              keyboardType="numeric"
+              placeholder="Enter new water level"
+            />
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={handleWaterLevelUpdate}
+            >
+              <Text style={styles.modalButtonText}>Update</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => setWaterLevelModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
     </ScrollView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -360,6 +439,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  input: {
+    width: '100%',
+    height: 40,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+    fontSize: 16,
+  },
+  modalButton: {
+    width: '100%',
+    backgroundColor: '#2692D0',
+    paddingVertical: 12,
+    borderRadius: 5,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

@@ -118,7 +118,7 @@ const HomeScreen = () => {
           <Text style={styles.greeting}>{greeting},</Text>
           <TouchableOpacity onPress={() => setModalVisible(true)}>
             <Text style={styles.userName}>{userName}</Text>
-            <Text style={styles.Wtercap}>Water Tank Capacity: {waterCapacity} Ltr</Text>
+            {/* <Text style={styles.Wtercap}>Water Tank Capacity: {waterCapacity} Ltr</Text> */}
           </TouchableOpacity>
         </View>
         {/* <TouchableOpacity>
@@ -138,12 +138,12 @@ const HomeScreen = () => {
               value={tempName}
               onChangeText={setTempName}
             />
-            <TextInput
+            {/* <TextInput
               style={styles.input}
               placeholder="Enter Water Tank Capacity"
               value={tempCapacity}
               onChangeText={setTempCapacity}
-            />
+            /> */}
             <View style={styles.modalButtons}>
               <Button title="Cancel" onPress={() => setModalVisible(false)} />
               <Button title="Save" onPress={handleSave} />
