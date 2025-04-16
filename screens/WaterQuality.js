@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Dimensions,
   TouchableOpacity,
   Animated,
+  Modal,
 } from 'react-native';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -77,7 +78,25 @@ const Card = ({ title, value, icon, height, delay }) => {
   );
 };
 
+const StatusModal = ({ visible, message, onClose }) => {
+  return (
+    <Modal transparent visible={visible} animationType="fade">
+      <View style={styles.modalBackground}>
+        <View style={styles.modalContainer}>
+          <Text style={styles.modalMessage}>{message}</Text>
+          <TouchableOpacity style={styles.modalButton} onPress={onClose}>
+            <Text style={styles.modalButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const WaterQualityScreen = () => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
+
   const leftColumnCards = cards.filter((_, i) => i % 2 === 0);
   const rightColumnCards = cards.filter((_, i) => i % 2 !== 0);
   const speedometerColor = getColorByWaterQuality(WATER_QUALITY_PERCENT);
@@ -89,17 +108,23 @@ const WaterQualityScreen = () => {
       timestamp: Date.now(),
     })
       .then(() => {
-        console.log('Water change triggered');
+        setModalMessage('Water change initiated');
+        setModalVisible(true);
       })
       .catch((error) => {
         console.error('Error updating waterchange:', error);
       });
   };
 
+  const handleFetchStats = () => {
+    setModalMessage('Fetching latest stats...');
+    setModalVisible(true);
+  };
+
   const size = 200;
   const strokeWidth = 20;
   const radius = size / 2;
-  const angle = (WATER_QUALITY_PERCENT / 100) * 360 - 90; // start from top
+  const angle = (WATER_QUALITY_PERCENT / 100) * 360 - 90;
   const radians = (angle * Math.PI) / 180;
   const edgeX = radius + radius * Math.cos(radians);
   const edgeY = radius + radius * Math.sin(radians);
@@ -120,7 +145,6 @@ const WaterQualityScreen = () => {
             arcSweepAngle={360}
             lineCap="round"
           />
-          {/* Floating percentage at arc end */}
           <View
             style={[
               styles.percentageBubble,
@@ -142,11 +166,12 @@ const WaterQualityScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
+
       <View style={styles.feedButtonWrapper}>
-  <TouchableOpacity style={styles.feedButton}>
-    <Text style={styles.feedButtonText}>Fetch Stats</Text>
-  </TouchableOpacity>
-</View>
+        <TouchableOpacity style={styles.feedButton} onPress={handleFetchStats}>
+          <Text style={styles.feedButtonText}>Fetch Stats</Text>
+        </TouchableOpacity>
+      </View>
 
       <Text style={styles.subheading}>Stats</Text>
 
@@ -162,6 +187,12 @@ const WaterQualityScreen = () => {
           ))}
         </View>
       </View>
+
+      <StatusModal
+        visible={modalVisible}
+        message={modalMessage}
+        onClose={() => setModalVisible(false)}
+      />
     </ScrollView>
   );
 };
@@ -227,11 +258,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 4 },
   },
-  feedButtonWrapper: {
-  alignItems: 'center',
-
-},
-
   cardTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -255,20 +281,8 @@ const styles = StyleSheet.create({
     color: '#2692D0',
     textAlign: 'center',
   },
-  percentageBubble: {
-    position: 'absolute',
-    width: 50,
-    height: 25,
-    borderRadius: 12,
-    justifyContent: 'center',
+  feedButtonWrapper: {
     alignItems: 'center',
-    zIndex: 10,
-    paddingHorizontal: 6,
-  },
-  bubbleText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 13,
   },
   feedButton: {
     flexDirection: 'row',
@@ -284,6 +298,51 @@ const styles = StyleSheet.create({
   feedButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  percentageBubble: {
+    position: 'absolute',
+    width: 50,
+    height: 25,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    paddingHorizontal: 6,
+  },
+  bubbleText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    padding: 24,
+    borderRadius: 18,
+    width: '80%',
+    alignItems: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButton: {
+    backgroundColor: '#2692D0',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 24,
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '700',
   },
 });

@@ -8,6 +8,7 @@ import {
   Animated,
   Image,
   ScrollView,
+  Modal,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { dbRealtime } from '../firebaseConfig';
@@ -26,24 +27,7 @@ const triggerFeed = async () => {
 const FeedFish = () => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [feedLogs, setFeedLogs] = useState([]);
-
-  /*const handleFeedPress = () => {
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        friction: 3,
-        tension: 80,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    triggerFeed();
-  };*/
+  const [modalVisible, setModalVisible] = useState(false);
 
   const handleFeedPress = async () => {
     Animated.sequence([
@@ -59,87 +43,66 @@ const FeedFish = () => {
         useNativeDriver: true,
       }),
     ]).start();
-  
+
     try {
       await triggerFeed();
-  
-      // Get current timestamp and formatted date/time
+
       const now = new Date();
       const day = now.toLocaleDateString('en-US', { weekday: 'long' });
       const date = now.toLocaleDateString('en-US');
       const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       const timestamp = now.getTime();
-  
+
       const logEntry = { day, date, time, timestamp };
-  
-      // Add to feedLogs
+
       await push(ref(dbRealtime, 'feedLogs'), logEntry);
-  
-      // Update lastFeed
       await set(ref(dbRealtime, 'lastFeed'), logEntry);
-  
-      // Refresh the logs
+
       fetchLatestFeedLogs();
+
+      setModalVisible(true);
+      setTimeout(() => setModalVisible(false), 2000);
     } catch (error) {
       console.error("Feed action failed:", error);
     }
   };
-
-
-  /*useEffect(() => {
-    const fetchLatestFeedLogs = async () => {
-      try {
-        const logsRef = query(ref(dbRealtime, 'feedLogs'), orderByChild('timestamp'), limitToLast(3));
-        const snapshot = await get(logsRef);
-        const logs = [];
-
-        snapshot.forEach(child => {
-          logs.push({
-            id: child.key,
-            ...child.val(),
-          });
-        });
-
-        // Reverse to show newest first
-        setFeedLogs(logs.reverse());
-      } catch (error) {
-        console.error("Error fetching feed logs:", error);
-      }
-    };
-
-    fetchLatestFeedLogs();
-  }, []);*/
 
   const fetchLatestFeedLogs = async () => {
     try {
       const logsRef = query(ref(dbRealtime, 'feedLogs'), orderByChild('timestamp'), limitToLast(3));
       const snapshot = await get(logsRef);
       const logs = [];
-  
+
       snapshot.forEach(child => {
         logs.push({
           id: child.key,
           ...child.val(),
         });
       });
-  
+
       setFeedLogs(logs.reverse());
     } catch (error) {
       console.error("Error fetching feed logs:", error);
     }
   };
-  
-  // Initial fetch
+
   useEffect(() => {
     fetchLatestFeedLogs();
   }, []);
-  
 
   const latestFeed = feedLogs.length > 0 ? feedLogs[0] : null;
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Feed Info */}
+      <Modal visible={modalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Icon name="checkmark-circle" size={60} color="#4BB543" />
+            <Text style={styles.modalText}>Fish Fed Success</Text>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.feedCard}>
         <View style={styles.feedHeader}>
           <Text style={styles.feedLabel}>Last feed</Text>
@@ -150,7 +113,6 @@ const FeedFish = () => {
         <View style={styles.progressBar} />
       </View>
 
-      {/* Banner */}
       <View style={styles.bannerCard}>
         <Image
           source={require('../assets/feedfish.jpg')}
@@ -159,7 +121,6 @@ const FeedFish = () => {
         />
       </View>
 
-      {/* Feed Button */}
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
         <TouchableOpacity style={styles.feedButton} onPress={handleFeedPress}>
           <Icon name="fish" size={20} color="#fff" style={{ marginRight: 8 }} />
@@ -167,7 +128,6 @@ const FeedFish = () => {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Feed History Table */}
       <View style={styles.tableCard}>
         <Text style={styles.tableTitle}>Last 3 Feed Logs</Text>
         <View style={styles.tableHeader}>
@@ -303,6 +263,25 @@ const styles = StyleSheet.create({
     color: '#333',
     flex: 1,
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 30,
+    borderRadius: 16,
+    alignItems: 'center',
+    elevation: 10,
+  },
+  modalText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 10,
+    color: '#4BB543',
   },
 });
 
