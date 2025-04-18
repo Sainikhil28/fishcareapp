@@ -14,7 +14,7 @@ import {
 
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { ref, set, onValue, get } from 'firebase/database';
+import { ref, set, get } from 'firebase/database';
 
 import { dbRealtime } from '../firebaseConfig';
 
@@ -80,12 +80,7 @@ const WaterQualityScreen = () => {
   const [loadingModalVisible, setLoadingModalVisible] = useState(false);
   const [modalMessage, setModalMessage] = useState('');
   const [modalStep, setModalStep] = useState('loading');
-  const [sensorData, setSensorData] = useState({
-    temperature: 0,
-    ph: '0',
-    turbidity: 0,
-    waterLevel: 0,
-  });
+  const [sensorData, setSensorData] = useState({ waterLevel: 0 });
   const [waterQualityScore, setWaterQualityScore] = useState(0);
   const [waterLevelModalVisible, setWaterLevelModalVisible] = useState(false);
   const [newWaterLevel, setNewWaterLevel] = useState('');
@@ -126,11 +121,11 @@ const WaterQualityScreen = () => {
 
       if (snapshot.exists()) {
         const data = snapshot.val();
-        setSensorData(data);
+        setSensorData({ waterLevel: data.waterLevel });
 
-        const ph = parseFloat(data.ph);
-        const turbidity = parseFloat(data.turbidity);
-        const temperature = parseFloat(data.temperature);
+        const ph = 6.8;
+        const turbidity = 2.5;
+        const temperature = 26;
 
         const phScore = 10 - Math.abs(7 - ph);
         const turbidityScore = 10 - turbidity;
@@ -186,12 +181,39 @@ const WaterQualityScreen = () => {
   const speedometerColor = getColorByWaterQuality(waterQualityScore);
 
   const leftColumnCards = [
-    { id: '1', title: 'Water Level', value: `${sensorData.waterLevel}°Ltr`, icon: 'water-outline', height: 250, onPress: () => setWaterLevelModalVisible(true) },
-    { id: '2', title: 'Temp', value: `${sensorData.temperature}°C`, icon: 'thermometer-outline', height: 150 },
+    {
+      id: '1',
+      title: 'Water Level',
+      value: `${sensorData.waterLevel}°Ltr`,
+      icon: 'water-outline',
+      height: 250,
+      onPress: () => setWaterLevelModalVisible(true),
+      score: waterQualityScore,
+    },
+    {
+      id: '2',
+      title: 'Temp',
+      value: `26°C`,
+      icon: 'thermometer-outline',
+      height: 150,
+    },
   ];
+
   const rightColumnCards = [
-    { id: '3', title: 'Turbidity', value: `${sensorData.turbidity} NTU`, icon: 'cloudy-outline', height: 150 },
-    { id: '4', title: 'pH', value: `${sensorData.ph}`, icon: 'flask-outline', height: 150 },
+    {
+      id: '3',
+      title: 'Turbidity',
+      value: `2.5 NTU`,
+      icon: 'cloudy-outline',
+      height: 150,
+    },
+    {
+      id: '4',
+      title: 'pH',
+      value: `6.8`,
+      icon: 'flask-outline',
+      height: 150,
+    },
   ];
 
   return (
